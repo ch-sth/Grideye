@@ -1,0 +1,7 @@
+# Example calibration placeholders; replace with measured values.
+frame: {width: 1920, height: 1080}
+intrinsics: {fx_px: 1200.0, fy_px: 1200.0, cx_px: 960.0, cy_px: 540.0}
+distortion: {model: placeholder, coefficients: []}
+mount: {x_m: 0.0, y_m: 0.0, z_m: 0.0, roll_deg: 0.0, pitch_deg: -90.0, yaw_deg: 0.0}
+stream: {rtsp_url: null, gstreamer_pipeline: null}
+

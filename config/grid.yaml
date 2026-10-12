@@ -1,0 +1,5 @@
+origin: {x_m: 0.0, y_m: 0.0}
+cell_size_m: 0.2
+rows: 10
+columns: 10
+axis_convention: "x=east/right, y=north/forward, z=up"

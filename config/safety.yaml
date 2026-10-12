@@ -1,0 +1,8 @@
+flight_margin_m: 0.25
+minimum_anchors: 3
+minimum_quality: 0.5
+consecutive_bad_samples: 3
+position_timeout_seconds: 2.0
+gamepad_timeout_seconds: 1.0
+gamepad_deadzone: 0.18
+landing_speed_m_s: 0.3

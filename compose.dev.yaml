@@ -1,0 +1,8 @@
+services:
+  backend:
+    volumes: [".:/app"]
+    command: ["uvicorn", "services.backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+  uwb-simulator: {volumes: [".:/app"]}
+  flight-simulator: {volumes: [".:/app"]}
+  tracking: {volumes: [".:/app"]}
+

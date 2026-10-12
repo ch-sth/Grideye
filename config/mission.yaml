@@ -1,0 +1,6 @@
+# Example operational defaults; validate for the actual vehicle and site.
+nominal_flight_height_m: 1.2
+speed_m_s: 0.3
+overlap: 0.25
+scan_strategy: boustrophedon
+
