@@ -5,6 +5,89 @@ simulators and typed adapter boundaries. The backend provides mission execution 
 behavior **in simulation only**. Real motor control and flight failsafes remain the flight
 controller's responsibility.
 
+## Windows quick start mit Docker Desktop
+
+Diese Anleitung ist fuer Windows gedacht. Das Projekt laeuft dabei komplett in Docker-Containern,
+deshalb musst du Python oder die einzelnen Services nicht lokal starten.
+
+### 1. Docker Desktop installieren
+
+1. Lade Docker Desktop fuer Windows herunter: <https://www.docker.com/products/docker-desktop/>
+2. Installiere Docker Desktop mit den Standardoptionen.
+3. Aktiviere WSL 2, falls Docker Desktop danach fragt.
+4. Starte den Computer neu, falls die Installation das verlangt.
+5. Oeffne Docker Desktop und warte, bis unten links `Engine running` oder ein aehnlicher
+   gruener Status angezeigt wird.
+
+Wenn Docker Desktop nicht startet, pruefe in Windows, ob Virtualisierung aktiviert ist und ob WSL
+installiert ist. Docker Desktop fuehrt dich normalerweise durch diese Schritte.
+
+### 2. Projekt vorbereiten
+
+Oeffne PowerShell im Projektordner, also in diesem Verzeichnis:
+
+```powershell
+cd D:\Schule\Projektarbeit\Software\grideye\Grideye
+```
+
+Lege danach die lokale Umgebungsdatei an:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Optional kannst du die Datei `.env` oeffnen und das Datenbankpasswort anpassen. Fuer einen lokalen
+Teststart reicht die Beispieldatei normalerweise aus.
+
+### 3. Projekt starten
+
+Starte alle Container mit Docker Compose:
+
+```powershell
+docker compose --env-file .env -f compose.yaml up -d --build
+```
+
+Der erste Start kann ein paar Minuten dauern, weil Docker die Images baut. Danach ist das Dashboard
+im Browser erreichbar:
+
+```text
+http://localhost:8000/
+```
+
+Die API-Dokumentation findest du hier:
+
+```text
+http://localhost:8000/docs
+```
+
+### 4. Pruefen, ob alles laeuft
+
+Zeige die laufenden Container an:
+
+```powershell
+docker compose --env-file .env -f compose.yaml ps
+```
+
+Logs anzeigen:
+
+```powershell
+docker compose --env-file .env -f compose.yaml logs -f
+```
+
+### 5. Projekt stoppen
+
+Stoppe die Container mit:
+
+```powershell
+docker compose --env-file .env -f compose.yaml down
+```
+
+Die gespeicherten Daten bleiben dabei in Docker-Volumes erhalten.
+
+Hinweis: Die Dateien `start.sh` und `stop.sh` sind Bash-Skripte. Unter Windows funktionieren sie
+direkt nur mit Git Bash oder WSL. In PowerShell verwende stattdessen die Docker-Compose-Befehle aus
+dieser Anleitung.
+
 ## Quick start on Raspberry Pi OS 64-bit
 
 Prerequisites are Git, Docker Engine with Compose v2, and (for host development) Python 3.12+
