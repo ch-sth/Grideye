@@ -76,7 +76,7 @@ Im Docker-Container sind die USB-Geräte des Hosts nicht automatisch verfügbar.
 Die Provider-Grenzen in `services/mission/providers.py` halten Missionslogik und
 konkrete Geräte getrennt. Reale UWB-Protokolle, Linux-Gamepad-Erfassung und MAVLink
 sind noch nicht implementiert. REAL HARDWARE ist deshalb noch nicht auswählbar.
-Kamera/OCR bleiben die bisherigen Erweiterungspunkte. Anker-Distanzen, UWB-Fehler,
+Die Einbindung des Kamera-Livefeeds in die ArUco-Erkennung bleibt ein Erweiterungspunkt. Anker-Distanzen, UWB-Fehler,
 Positionsunsicherheiten und echte Höhen-Sensorfusion benötigen entsprechende Gerätedaten.
 
 ## Backend und Datenhaltung

@@ -1,7 +1,7 @@
 """AI service integration boundary.
 
-TODO: attach CameraProvider, YOLO/OpenCV ObjectDetector and OCR implementation.
-No model weights are downloaded by this skeleton.
+TODO: attach CameraProvider, ArUco ObjectDetector and publish detections.
+ArUco detection is implemented in detectors.ArucoDetector; camera wiring remains pending.
 """
 
 import time

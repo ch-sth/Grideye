@@ -148,7 +148,7 @@ MQTT and database connections are checked from the backend and do not prove hard
 Compose mounts the host `config` directory so settings survive container replacement.
 Grid, safety, anchor mappings and the heartbeat timeout update immediately. Grid, safety and
 anchor changes require an idle, landed simulation. Logging and tracking proximity require
-a restart. The old UWB settings apply only to the optional legacy simulator. Camera, AI and
+a restart. The old UWB settings apply only to the optional legacy simulator. IP-camera preview runs in the backend. AI publishing and
 grid-mapping remain future adapters. Mission, UWB and flight simulation run in the backend.
 Credentials remain in `.env` / Compose.
 Settings edits are shared by dashboard users; the last save wins.
@@ -183,9 +183,45 @@ in [docs/mqtt.md](docs/mqtt.md).
 - Implement `UwbProvider` in `services/uwb` for the selected UWB hardware.
 - Implement `FlightAdapter` in `services/flight` to encapsulate MAVLink. Never auto-arm or bypass
   flight-controller safeguards.
-- Implement `CameraProvider` in `services/camera`; RTSP/GStreamer settings belong in
-  `config/camera.yaml`. Images remain outside MQTT.
-- Replace `DummyDetector` and `DummyOCR` in `services/ai` without checking model weights into Git.
+- IP-camera capture and live preview are implemented in `services/camera/live.py`.
+  Stream settings belong in `config/camera.yaml`. Images remain outside MQTT.
+- `services.ai.detectors.ArucoDetector` replaces OCR. Call `await detector.detect(frame)`
+  with encoded PNG/JPEG bytes. Default dictionary: `DICT_4X4_1000` (IDs 0-999).
+  Pass a different OpenCV dictionary name to the constructor if required. Printed tags
+  must use the same dictionary and have a white margin.
+  Results use class `aruco`, the tag ID in `number`, pixel bounding boxes and actual
+  frame dimensions. `marker_confidence` replaces `ocr_confidence`; external MQTT
+  producers must update this field. Confidence 1.0 means successfully decoded,
+  not a calibrated probability. No model weights are required.
+  See the [OpenCV ArUco API](https://docs.opencv.org/4.x/d5/dae/tutorial_aruco_detection.html).
+  Connecting the live camera to ArUco detection and publishing detections remain
+  integration work; the AI main process currently publishes heartbeats only.
 
 The current nadir projection only supports roll/pitch zero and a simplified pinhole camera. Full
 extrinsics, homography and distortion handling are explicit follow-up work.
+
+## IP-Kamera im Dashboard
+
+1. Im Reiter **Kamera** unter **Einstellungen** das Feld **Kamera-IP oder Stream-URL** ausfüllen.
+   Beispiele: `192.168.1.50`, `rtsp://192.168.1.50:554/stream1`,
+   `rtsp://benutzer:passwort@192.168.1.50:554/stream1` oder
+   `http://192.168.1.50:8080/video` (HTTP-MJPEG).
+2. **Einstellungen speichern**: Die Kamera wird sofort verbunden, ohne Neustart.
+   Das Livebild erscheint über den Einstellungen. Zum Wechseln eine andere Adresse speichern.
+3. Zum Trennen das Adressfeld leeren und speichern. Die Auswahl bleibt über Neustarts erhalten.
+
+Eine reine IP wird zu `rtsp://IP` ergänzt. Stream-Pfad, Port und gegebenenfalls Zugangsdaten
+müssen zum Kameramodell passen; eine Kamera-Weboberfläche ist kein Video-Stream.
+Das Backend bzw. dessen Docker-Container muss die Kamera im Netzwerk erreichen können.
+Zugangsdaten in URLs werden in der gemeinsamen Kamerakonfiguration gespeichert.
+Die Kamera-Einstellungen gelten für alle Dashboard-Nutzer.
+
+Das Backend verwendet eine gemeinsame OpenCV/FFmpeg-Verbindung mit Lese- und
+Verbindungszeitlimit und versucht nach Fehlern erneut zu verbinden. Der Browser lädt
+aktuelle JPEG-Vorschaubilder mit bis zu fünf Bildern pro Sekunde; veraltete Bilder werden
+ausgeblendet. `GET /api/v1/camera/status` liefert den Verbindungsstatus,
+`GET /api/v1/camera/frame.jpg` das aktuelle Bild oder HTTP 503.
+Die [OpenCV-Zeitlimits](https://docs.opencv.org/4.x/d4/d15/group__videoio__flags__base.html)
+begrenzen blockierende Netzwerkzugriffe. GStreamer-Pipelines werden weiterhin nicht ausgeführt.
+Nach einem Kameratausch die Kalibrierung für Projektion und Grid-Zuordnung anpassen.
+Die automatische ArUco-Auswertung des Livefeeds ist noch nicht angeschlossen.

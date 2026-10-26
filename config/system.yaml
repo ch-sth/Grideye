@@ -1,4 +1,2 @@
-# Example system settings.
-service_timeout_seconds: 15
+service_timeout_seconds: 15.0
 log_level: INFO
-

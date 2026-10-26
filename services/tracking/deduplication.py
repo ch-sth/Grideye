@@ -27,7 +27,10 @@ class DetectionTracker:
             number=detection.number,
             world=detection.world,
             grid=detection.grid,
-            confidence=min(detection.class_confidence, detection.ocr_confidence or 1.0),
+            confidence=min(
+                detection.class_confidence,
+                (detection.marker_confidence if detection.marker_confidence is not None else 1.0),
+            ),
         )
         self.confirmed.append(result)
         return result

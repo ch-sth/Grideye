@@ -29,6 +29,7 @@ from services.backend.mission_api import configure_manager
 from services.backend.mission_api import router as mission_router
 from services.backend.mqtt_bridge import MqttBridge
 from services.backend.state import runtime
+from services.camera.live import LiveCamera
 from services.mission.geometry import FlightField
 
 settings = Settings()
@@ -116,6 +117,10 @@ async def lifespan(_app: FastAPI):
                     controller.land()
             await asyncio.sleep(0.2)
 
+    camera = LiveCamera()
+    _app.state.camera = camera
+    camera.configure(read_config("camera")["stream"]["rtsp_url"])
+    camera.start()
     tasks = [asyncio.create_task(job()) for job in [heartbeat, physics, simulation_telemetry]]
     try:
         yield
@@ -125,6 +130,7 @@ async def lifespan(_app: FastAPI):
         for task in tasks:
             with suppress(asyncio.CancelledError):
                 await task
+        await asyncio.to_thread(camera.close)
         bridge.stop()
 
 
@@ -268,7 +274,26 @@ async def update_config(name: str, body: dict) -> dict[str, object]:
             controller.safety.settings = read_config("safety")
         if name == "anchors":
             controller.uwb.anchors = [device is not None for device in saved["devices"]]
+    if name == "camera" and hasattr(app.state, "camera"):
+        app.state.camera.configure(saved["stream"]["rtsp_url"])
     return {"config": saved, "restart_required": name in {"uwb", "tracking", "system"}}
+
+
+@app.get("/api/v1/camera/status")
+async def camera_status() -> dict:
+    camera = getattr(app.state, "camera", None)
+    if camera is None:
+        raise HTTPException(503, "Kameradienst nicht gestartet")
+    return camera.status()
+
+
+@app.get("/api/v1/camera/frame.jpg")
+async def camera_frame() -> Response:
+    camera = getattr(app.state, "camera", None)
+    frame = camera.frame() if camera else None
+    if frame is None:
+        raise HTTPException(503, "Kein aktuelles Kamerabild")
+    return Response(frame, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
 
 
 @app.websocket("/ws/live")

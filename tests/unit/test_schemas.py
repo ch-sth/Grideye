@@ -31,7 +31,7 @@ def make_grid_detection(number: str = "4712", x: float = 1) -> GridDetection:
         class_name="package",
         class_confidence=0.94,
         number=number,
-        ocr_confidence=0.91,
+        marker_confidence=0.91,
         bbox_px=BoundingBox(x=1, y=2, width=3, height=4),
         frame=FrameSize(width=100, height=100),
         world=WorldPosition(x_m=x, y_m=1),

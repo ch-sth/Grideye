@@ -118,3 +118,39 @@ async def test_simulation_api_and_configuration_guard(client, monkeypatch):
     for _ in range(10):
         manager.tick(0.1)
     assert (await client.post("/api/v1/simulation/reset")).status_code == 200
+
+
+async def test_camera_config_switch_and_preview_api(client, monkeypatch):
+    from services.camera.live import LiveCamera
+
+    camera = LiveCamera()
+    monkeypatch.setattr(app.state, "camera", camera, raising=False)
+    config = (await client.get("/api/v1/config")).json()["camera"]
+    config["stream"]["rtsp_url"] = "192.168.1.50:554/live"
+    result = await client.put("/api/v1/config/camera", json=config)
+    assert result.status_code == 200
+    assert result.json()["restart_required"] is False
+    assert files.read_config("camera")["stream"]["rtsp_url"] == "rtsp://192.168.1.50:554/live"
+    assert (await client.get("/api/v1/camera/status")).json()["status"] == "starting"
+    assert (await client.get("/api/v1/camera/frame.jpg")).status_code == 503
+    revision = camera.status()["revision"]
+    camera._publish(revision, "online", "Livebild", b"jpeg")
+    response = await client.get("/api/v1/camera/frame.jpg")
+    assert response.content == b"jpeg"
+    assert response.headers["content-type"] == "image/jpeg"
+    assert response.headers["cache-control"] == "no-store"
+    config["stream"]["rtsp_url"] = "192.168.1.60/live"
+    assert (await client.put("/api/v1/config/camera", json=config)).status_code == 200
+    assert (await client.get("/api/v1/camera/frame.jpg")).status_code == 503
+    config["stream"]["rtsp_url"] = "file:///etc/passwd"
+    assert (await client.put("/api/v1/config/camera", json=config)).status_code == 422
+    assert files.read_config("camera")["stream"]["rtsp_url"] == "rtsp://192.168.1.60/live"
+    config["stream"]["rtsp_url"] = ""
+    assert (await client.put("/api/v1/config/camera", json=config)).status_code == 200
+    assert (await client.get("/api/v1/camera/status")).json()["configured"] is False
+
+
+async def test_camera_page_contains_preview(client):
+    response = await client.get("/services/camera")
+    assert 'id="camera-preview"' in response.text
+    assert 'id="camera-image"' in response.text

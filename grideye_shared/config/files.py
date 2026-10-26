@@ -5,9 +5,10 @@ import stat
 import tempfile
 from pathlib import Path
 from typing import Literal
+from urllib.parse import urlsplit
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 CONFIG_DIR = Path(__file__).resolve().parents[2] / "config"
 
@@ -70,6 +71,32 @@ class Mount(ConfigModel):
 class Stream(ConfigModel):
     rtsp_url: str | None = Field(default=None, max_length=2000)
     gstreamer_pipeline: str | None = Field(default=None, max_length=4000)
+
+    @field_validator("rtsp_url", mode="before")
+    @classmethod
+    def camera_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            raise ValueError("Kamera-Adresse muss Text sein.")
+        if not value.strip():
+            return None
+        value = value.strip()
+        if "://" not in value:
+            value = "rtsp://" + value
+        try:
+            parsed = urlsplit(value)
+            if parsed.scheme not in {"rtsp", "rtsps", "http", "https"} or not parsed.hostname:
+                raise ValueError("invalid camera URL")
+            if parsed.port is not None and not 1 <= parsed.port <= 65535:
+                raise ValueError("invalid port")
+            if any(char.isspace() for char in value) or "#" in value:
+                raise ValueError("invalid camera URL")
+        except ValueError as exc:
+            raise ValueError(
+                "Kamera-Adresse muss eine IP/Hostadresse oder RTSP/HTTP-Stream-URL sein."
+            ) from exc
+        return value
 
 
 class CameraSettings(ConfigModel):

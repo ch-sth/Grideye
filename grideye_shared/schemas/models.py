@@ -97,7 +97,7 @@ class AiDetection(Contract):
     class_name: str = Field(min_length=1)
     class_confidence: Confidence
     number: str | None = None
-    ocr_confidence: Confidence | None = None
+    marker_confidence: Confidence | None = None
     bbox_px: BoundingBox
     frame: FrameSize
 

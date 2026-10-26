@@ -1,4 +1,4 @@
-"""Camera service skeleton; configure RTSP/GStreamer only in a future adapter."""
+"""Legacy standalone heartbeat. IP-camera capture runs in the backend via camera.live."""
 
 import time
 
