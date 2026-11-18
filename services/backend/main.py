@@ -24,11 +24,14 @@ from grideye_shared.schemas import (
     ServiceStatus,
     UwbPosition,
 )
+from services.ai.model_store import ModelStore
 from services.backend.database import DetectionRow, MissionRow, SessionLocal, create_schema
 from services.backend.mission_api import configure_manager
 from services.backend.mission_api import router as mission_router
+from services.backend.model_api import router as model_router
 from services.backend.mqtt_bridge import MqttBridge
 from services.backend.state import runtime
+from services.backend.vision import vision_loop
 from services.camera.live import LiveCamera
 from services.mission.geometry import FlightField
 
@@ -121,7 +124,9 @@ async def lifespan(_app: FastAPI):
     _app.state.camera = camera
     camera.configure(read_config("camera")["stream"]["rtsp_url"])
     camera.start()
+    _app.state.model_store = await asyncio.to_thread(ModelStore)
     tasks = [asyncio.create_task(job()) for job in [heartbeat, physics, simulation_telemetry]]
+    tasks.append(asyncio.create_task(vision_loop(_app)))
     try:
         yield
     finally:
@@ -136,6 +141,7 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(title="Grideye API", version="0.1.0", lifespan=lifespan)
 app.include_router(mission_router)
+app.include_router(model_router)
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
 

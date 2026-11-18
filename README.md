@@ -148,8 +148,8 @@ MQTT and database connections are checked from the backend and do not prove hard
 Compose mounts the host `config` directory so settings survive container replacement.
 Grid, safety, anchor mappings and the heartbeat timeout update immediately. Grid, safety and
 anchor changes require an idle, landed simulation. Logging and tracking proximity require
-a restart. The old UWB settings apply only to the optional legacy simulator. IP-camera preview runs in the backend. AI publishing and
-grid-mapping remain future adapters. Mission, UWB and flight simulation run in the backend.
+a restart. The old UWB settings apply only to the optional legacy simulator. IP-camera preview and AI inference run in the backend.
+Grid-mapping remains a future adapter. Mission, UWB and flight simulation run in the backend.
 Credentials remain in `.env` / Compose.
 Settings edits are shared by dashboard users; the last save wins.
 Only missions, confirmed detections and system events are modeled for persistence; high-rate
@@ -194,8 +194,8 @@ in [docs/mqtt.md](docs/mqtt.md).
   producers must update this field. Confidence 1.0 means successfully decoded,
   not a calibrated probability. No model weights are required.
   See the [OpenCV ArUco API](https://docs.opencv.org/4.x/d5/dae/tutorial_aruco_detection.html).
-  Connecting the live camera to ArUco detection and publishing detections remain
-  integration work; the AI main process currently publishes heartbeats only.
+  The backend applies the active detector to live camera frames and publishes results
+  on `grideye/ai/detection`. The legacy AI main process is only a standalone heartbeat.
 
 The current nadir projection only supports roll/pitch zero and a simplified pinhole camera. Full
 extrinsics, homography and distortion handling are explicit follow-up work.
@@ -224,4 +224,46 @@ ausgeblendet. `GET /api/v1/camera/status` liefert den Verbindungsstatus,
 Die [OpenCV-Zeitlimits](https://docs.opencv.org/4.x/d4/d15/group__videoio__flags__base.html)
 begrenzen blockierende Netzwerkzugriffe. GStreamer-Pipelines werden weiterhin nicht ausgeführt.
 Nach einem Kameratausch die Kalibrierung für Projektion und Grid-Zuordnung anpassen.
-Die automatische ArUco-Auswertung des Livefeeds ist noch nicht angeschlossen.
+Der aktive Detektor (ArUco oder YOLO) wertet den Livefeed im Backend aus.
+
+## YOLO-Modell importieren und aktivieren
+
+Im Dashboard unter **KI-Modelle** lassen sich Ultralytics-kompatible YOLO-Modelle für
+Objekterkennung (`detect`, `.pt`) importieren. Andere PyTorch-Architekturen, reine
+`state_dict`-Dateien und Klassifikations-/Segmentierungsmodelle werden nicht unterstützt.
+Die Einbindung verwendet die [Ultralytics-Python-API](https://docs.ultralytics.com/usage/python/).
+
+- **Über Serverpfad:** Die `.pt`-Datei im Projektordner `model-imports` ablegen.
+  Im Dialog beispielsweise `/model-imports/best.pt` eingeben und **Importieren & aktivieren**
+  wählen. Docker stellt diesen Ordner schreibgeschützt im Backend bereit. Bei einem
+  Betrieb ohne Docker kann ein lesbarer lokaler Serverpfad verwendet werden.
+- **Vom PC:** Über die Dateiauswahl eine `.pt`-Datei auswählen und **Hochladen & aktivieren**
+  wählen. Das funktioniert auch, wenn der Browser auf einem anderen Rechner läuft;
+  ein Windows-Dateipfad kann nicht als Serverpfad im Linux-Container verwendet werden.
+- **Wechseln:** Bei einem bereits importierten Modell **Aktivieren** wählen.
+  **ArUco** ist ebenfalls auswählbar und benötigt keine Modelldatei.
+
+Das Programm kopiert jede Datei (maximal 512 MiB), erfasst ihre SHA-256-Prüfsumme und
+prüft das Modell mit einer echten Testauswertung, bevor es die aktive Auswahl umschaltet.
+Importfehler lassen das bisherige Modell aktiv. Die Originaldatei bleibt erhalten.
+Modelle und Auswahl werden unter `models/` gespeichert; in Docker liegt dieser Ordner im
+Volume `ai_models` und bleibt beim normalen Stoppen/Neustarten erhalten. `docker compose down -v`
+löscht auch dieses Volume. Die Auswahl gilt für alle Dashboard-Nutzer. Verwende eigene oder
+vertrauenswürdige `.pt`-Dateien, da PyTorch-Checkpoints Python-Objekte enthalten können.
+
+Die CPU-Version von PyTorch wird über den
+[offiziellen CPU-Paketindex](https://docs.astral.sh/uv/guides/integration/pytorch/) installiert.
+Der erste Build ist deshalb größer und dauert länger. Nach dem Update einmal `./start.sh`
+ausführen; anschließend sind Modellwechsel ohne Neustart möglich.
+
+Die Liveauswertung arbeitet unabhängig vom Kamera-Preview mit maximal zwei Auswertungen
+pro Sekunde (bei langsamen Modellen entsprechend weniger). Sie verwendet YOLO mit 640 Pixeln
+Eingangsgröße und einer Konfidenzschwelle von 0,25. Ergebnisse erscheinen unter **KI-Modelle**
+und werden auf `grideye/ai/detection` veröffentlicht. Die automatische Grid-Projektion ist
+weiterhin nicht angeschlossen; es werden keine ungeprüften Weltkoordinaten gespeichert.
+
+API: `GET /api/v1/ai/models`, `POST /api/v1/ai/models/import` mit `{"path":"..."}`,
+`POST /api/v1/ai/models/upload?filename=best.pt` mit binärem Dateiinhalt,
+`POST /api/v1/ai/models/activate` mit `{"model_id":"..."}` (oder `aruco`) und
+`GET /api/v1/ai/result`. Der Backend-Prozess wird mit einem Worker betrieben, damit die
+Modellauswahl und der Kamerazugriff gemeinsam verwaltet werden.

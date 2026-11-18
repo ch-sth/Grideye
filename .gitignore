@@ -19,3 +19,6 @@ weights/
 .vscode/
 *.swp
 .DS_Store
+
+model-imports/*
+!model-imports/.gitkeep

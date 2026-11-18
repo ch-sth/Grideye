@@ -1,7 +1,7 @@
 """AI service integration boundary.
 
-TODO: attach CameraProvider, ArUco ObjectDetector and publish detections.
-ArUco detection is implemented in detectors.ArucoDetector; camera wiring remains pending.
+Legacy standalone heartbeat only.
+Live inference and model switching run in the backend via backend.vision and model_api.
 """
 
 import time

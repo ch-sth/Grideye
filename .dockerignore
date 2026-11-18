@@ -12,3 +12,9 @@ __pycache__
 .aws
 logs
 data
+
+models
+model-imports
+*.pt
+*.pth
+*.onnx

@@ -19,7 +19,7 @@ services:
     restart: unless-stopped
   backend:
     build: .
-    volumes: ["./config:/app/config"]
+    volumes: ["./config:/app/config", "ai_models:/app/models", "./model-imports:/model-imports:ro"]
     command: ["uvicorn", "services.backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
     environment: &app-env
       MQTT_HOST: mqtt
@@ -57,3 +57,4 @@ services:
 volumes:
   mqtt_data:
   postgres_data:
+  ai_models:
