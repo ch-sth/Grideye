@@ -25,7 +25,13 @@ from grideye_shared.schemas import (
     UwbPosition,
 )
 from services.ai.model_store import ModelStore
-from services.backend.database import DetectionRow, MissionRow, SessionLocal, create_schema
+from services.backend.database import (
+    DetectionRow,
+    MissionRow,
+    SessionLocal,
+    TaggedObjectRow,
+    create_schema,
+)
 from services.backend.mission_api import configure_manager
 from services.backend.mission_api import router as mission_router
 from services.backend.model_api import router as model_router
@@ -159,6 +165,20 @@ def detection_dict(row: DetectionRow) -> dict[str, object]:
     }
 
 
+def tagged_object_dict(row: TaggedObjectRow) -> dict[str, object]:
+    return {
+        "id": str(row.id),
+        "timestamp": row.timestamp.isoformat(),
+        "mission_id": None,
+        "class_name": row.class_name,
+        "number": row.number,
+        "confidence": row.confidence,
+        "world": None,
+        "grid_cell": None,
+        "image_reference": None,
+    }
+
+
 @app.get("/api/v1/system/health")
 async def health() -> dict[str, object]:
     return {"status": "ok", "timestamp": datetime.now(UTC).isoformat(), "version": "0.1.0"}
@@ -220,7 +240,9 @@ async def detections() -> list[dict[str, object]]:
         rows = (
             await session.scalars(select(DetectionRow).order_by(DetectionRow.timestamp.desc()))
         ).all()
-        return [detection_dict(row) for row in rows]
+        tagged = (await session.scalars(select(TaggedObjectRow))).all()
+        items = [detection_dict(row) for row in rows] + [tagged_object_dict(row) for row in tagged]
+        return sorted(items, key=lambda item: str(item["timestamp"]), reverse=True)
 
 
 @app.get("/api/v1/detections/{detection_id}")
@@ -228,8 +250,24 @@ async def detection(detection_id: UUID) -> dict[str, object]:
     async with SessionLocal() as session:
         row = await session.get(DetectionRow, detection_id)
         if row is None:
-            raise HTTPException(404, "detection not found")
+            tagged = await session.get(TaggedObjectRow, detection_id)
+            if tagged is None:
+                raise HTTPException(404, "detection not found")
+            return tagged_object_dict(tagged)
         return detection_dict(row)
+
+
+@app.delete("/api/v1/detections/{detection_id}", status_code=204)
+async def delete_detection(detection_id: UUID) -> Response:
+    async with SessionLocal() as session:
+        row = await session.get(DetectionRow, detection_id)
+        if row is None:
+            row = await session.get(TaggedObjectRow, detection_id)
+        if row is None:
+            raise HTTPException(404, "detection not found")
+        await session.delete(row)
+        await session.commit()
+    return Response(status_code=204)
 
 
 @app.get("/api/v1/grid")
@@ -242,6 +280,8 @@ async def grid_cells() -> list[dict[str, object]]:
     items = await detections()
     grouped: dict[str, int] = {}
     for item in items:
+        if item["grid_cell"] is None:
+            continue
         cell = str(item["grid_cell"])
         grouped[cell] = grouped.get(cell, 0) + 1
     return [{"cell": cell, "detections": count} for cell, count in sorted(grouped.items())]

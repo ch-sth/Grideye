@@ -34,6 +34,15 @@ class DetectionRow(Base):
     image_reference: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
+class TaggedObjectRow(Base):
+    __tablename__ = "tagged_objects"
+    id: Mapped[UUID] = mapped_column(primary_key=True)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    class_name: Mapped[str] = mapped_column(String(100))
+    number: Mapped[str] = mapped_column(String(100), unique=True)
+    confidence: Mapped[float] = mapped_column(Float)
+
+
 class MissionPlanRow(Base):
     __tablename__ = "mission_plans"
     mission_id: Mapped[UUID] = mapped_column(ForeignKey("missions.id"), primary_key=True)

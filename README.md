@@ -224,7 +224,7 @@ ausgeblendet. `GET /api/v1/camera/status` liefert den Verbindungsstatus,
 Die [OpenCV-Zeitlimits](https://docs.opencv.org/4.x/d4/d15/group__videoio__flags__base.html)
 begrenzen blockierende Netzwerkzugriffe. GStreamer-Pipelines werden weiterhin nicht ausgef√ºhrt.
 Nach einem Kameratausch die Kalibrierung f√ºr Projektion und Grid-Zuordnung anpassen.
-Der aktive Detektor (ArUco oder YOLO) wertet den Livefeed im Backend aus.
+Der aktive Detektor wertet den Livefeed im Backend aus. Bei aktivem YOLO-Modell l‰uft die ArUco-Erkennung zus‰tzlich auf demselben Bild.
 
 ## YOLO-Modell importieren und aktivieren
 
